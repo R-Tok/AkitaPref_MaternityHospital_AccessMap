@@ -5,14 +5,14 @@ var map = new ol.Map({
     layers: layersList,
     view: new ol.View({
         constrainResolution: true,
-        maxZoom: 28,
-        minZoom: 1,
+        maxZoom: 19,
+        minZoom: 8,
         
     })
 });
 
 //initial view - epsg:3857 coordinates if not "Match project CRS"
-map.getView().fit([15474482.502204, 4704183.585149, 15760282.928625, 4972036.291448], map.getSize());
+map.getView().fit([15550894.732568, 4711229.695006, 15692948.399311, 4927697.655222], map.getSize());
 
 //change cursor
 function pointerOnFeature(evt) {
@@ -520,6 +520,23 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 
 
 //layerswitcher
+
+var layerSwitcher = new ol.control.LayerSwitcher({
+    activationMode: 'click',
+	startActive: true,
+	tipLabel: "Layers",
+    target: 'top-right-container',
+	collapseLabel: '»',
+	collapseTipLabel: 'Close'
+    });
+map.addControl(layerSwitcher);
+if (hasTouchScreen || isSmallScreen) {
+	document.addEventListener('DOMContentLoaded', function() {
+		setTimeout(function() {
+			layerSwitcher.hidePanel();
+		}, 500);
+	});	
+}
 
 
 
