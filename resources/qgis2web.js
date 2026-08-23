@@ -5,8 +5,8 @@ var map = new ol.Map({
     layers: layersList,
     view: new ol.View({
         constrainResolution: true,
-        maxZoom: 19,
-        minZoom: 8,
+        maxZoom: 18,
+        minZoom: 9,
         
     })
 });
