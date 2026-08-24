@@ -100,6 +100,8 @@ closer.onclick = function() {
     container.style.display = 'none';
     closer.blur();
     stopMediaInPopup();
+    clearSelectedLineHighlight();
+    popupContent = '';
     return false;
 };
 var overlayPopup = new ol.Overlay({
@@ -128,24 +130,55 @@ function getPopupFields(layerList, layer) {
 
 //highligth collection
 var collection = new ol.Collection();
+var selectedLineStyle = new ol.style.Style({
+    stroke: new ol.style.Stroke({
+        color: 'rgba(255, 0, 0, 1)',
+        width: 5,
+        lineCap: 'round',
+        lineJoin: 'round'
+    })
+});
 var featureOverlay = new ol.layer.Vector({
     map: map,
     source: new ol.source.Vector({
         features: collection,
         useSpatialIndex: false // optional, might improve performance
     }),
-    style: [new ol.style.Style({
-        stroke: new ol.style.Stroke({
-            color: '#f00',
-            width: 1
-        }),
-        fill: new ol.style.Fill({
-            color: 'rgba(255,0,0,0.1)'
-        }),
-    })],
+    style: selectedLineStyle,
+    interactive: false,
+    zIndex: 999,
     updateWhileAnimating: true, // optional, for instant visual feedback
     updateWhileInteracting: true // optional, for instant visual feedback
 });
+featureOverlay.set('interactive', false);
+
+function isLineGeometry(feature) {
+    if (!feature || !feature.getGeometry) {
+        return false;
+    }
+    var type = feature.getGeometry().getType();
+    return type === 'LineString' || type === 'MultiLineString';
+}
+
+function clearSelectedLineHighlight() {
+    featureOverlay.getSource().clear();
+}
+
+function setSelectedLineHighlight(features) {
+    var source = featureOverlay.getSource();
+    source.clear();
+    if (!features || !features.length) {
+        return;
+    }
+    for (var i = 0; i < features.length; i++) {
+        if (isLineGeometry(features[i])) {
+            source.addFeature(features[i].clone());
+        }
+    }
+    if (source.getFeatures().length > 0) {
+        featureOverlay.setStyle(selectedLineStyle);
+    }
+}
 
 var doHighlight = false;
 var doHover = false;
@@ -368,8 +401,12 @@ function onSingleClickFeatures(evt) {
     var currentFeatureKeys;
     var clusteredFeatures;
     var popupText = '<ul>';
+    var clickedPopupFeatures = [];
     
     map.forEachFeatureAtPixel(pixel, function(feature, layer) {
+        if (layer === featureOverlay) {
+            return;
+        }
         if (layer && feature instanceof ol.Feature && (layer.get("interactive") || layer.get("interactive") === undefined)) {
             var doPopup = false;
             for (var k in layer.get('fieldImages')) {
@@ -383,6 +420,7 @@ function onSingleClickFeatures(evt) {
                 if (doPopup) {
                     for(var n = 0; n < clusteredFeatures.length; n++) {
                         currentFeature = clusteredFeatures[n];
+                        clickedPopupFeatures.push(currentFeature);
                         currentFeatureKeys = currentFeature.getKeys();
                         popupText += '<li><table>';
                         popupText += '<a><b>' + layer.get('popuplayertitle') + '</b></a>';
@@ -393,6 +431,7 @@ function onSingleClickFeatures(evt) {
             } else {
                 currentFeatureKeys = currentFeature.getKeys();
                 if (doPopup) {
+                    clickedPopupFeatures.push(currentFeature);
                     popupText += '<li><table>';
                     popupText += '<a><b>' + layer.get('popuplayertitle') + '</b></a>';
                     popupText += createPopupField(currentFeature, currentFeatureKeys, layer);
@@ -409,6 +448,11 @@ function onSingleClickFeatures(evt) {
 	
 	popupContent = popupText;
     popupCoord = coord;
+    if (popupText) {
+        setSelectedLineHighlight(clickedPopupFeatures);
+    } else {
+        clearSelectedLineHighlight();
+    }
     updatePopup();
 }
 
