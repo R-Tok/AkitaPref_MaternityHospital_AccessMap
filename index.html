@@ -52,6 +52,32 @@
                 <div id="popup-content"></div>
             </div>
         </div>
+        <div id="travel-time-filter" class="ol-unselectable ol-control">
+            <div class="travel-time-filter-panel">
+                <div class="travel-time-filter-title">所要時間（分）</div>
+                <div class="travel-time-filter-align">
+                    <div class="travel-time-track">
+                        <div class="travel-time-track-bar">
+                            <div id="travel-time-track-fill" class="travel-time-track-fill"></div>
+                        </div>
+                        <input id="travel-time-range" type="range" min="2" max="60" step="2" value="60" aria-valuemin="2" aria-valuemax="60" aria-label="所要時間の上限（分）">
+                    </div>
+                    <div id="travel-time-ticks" class="travel-time-ticks" aria-hidden="true"></div>
+                    <div id="travel-time-labels" class="travel-time-labels" aria-hidden="true"></div>
+                </div>
+            </div>
+        </div>
+        <div id="about-modal" class="about-modal" hidden>
+            <div class="about-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
+                <h2 id="about-modal-title">この地図について</h2>
+                <p>最寄りの分娩取扱施設までの所要時間に応じた主要道路ネットワークの色分け地図です。<br>
+                全国的に増える分娩空白地について可視化と考察の目的で作成しました。</p>
+                <p>※道路ネットワークの各区間について、両端のより小さい方の所要時間に基づいて表示。また道路種別ごとに一律の速度と仮定しているため誤差を含みます。</p>
+                <p>【対象】秋田県全域</p>
+                <p>【使用データ】国土数値情報 道路データ 2024年（<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N13-2024.html" target="_blank" rel="noopener noreferrer">https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N13-2024.html</a>）</p>
+                <p>出産なび（<a href="https://birth-navi.mhlw.go.jp/" target="_blank" rel="noopener noreferrer">https://birth-navi.mhlw.go.jp/</a>）</p>
+            </div>
+        </div>
         <script src="resources/qgis2web_expressions.js"></script>
         <script src="./resources/functions.js"></script>
         <script src="./resources/ol.js"></script>

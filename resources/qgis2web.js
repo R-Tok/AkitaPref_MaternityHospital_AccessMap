@@ -14,15 +14,58 @@ var map = new ol.Map({
 //initial view - epsg:3857 coordinates if not "Match project CRS"
 map.getView().fit([15550894.732568, 4711229.695006, 15692948.399311, 4927697.655222], map.getSize());
 
+var TRAVEL_TIME_FIELD = '最寄り到達時間[分]';
+var TRAVEL_TIME_SLIDER_MIN = 2;
+var TRAVEL_TIME_SLIDER_MAX = 60;
+var TRAVEL_TIME_SLIDER_STEP = 2;
+var TRAVEL_TIME_TICK_VALUES = [2, 10, 20, 30, 40, 50, 60];
+var travelTimeMaxMinutes = TRAVEL_TIME_SLIDER_MAX;
+var originalRoadNetworkStyle = typeof style___2 === 'function' ? style___2 : null;
+
+function isTravelTimeVisible(feature) {
+    if (!feature) {
+        return false;
+    }
+    var value = feature.get(TRAVEL_TIME_FIELD);
+    if (value == null || value === '') {
+        return true;
+    }
+    return Number(value) <= travelTimeMaxMinutes;
+}
+
+function filteredRoadNetworkStyle(feature, resolution) {
+    if (!isTravelTimeVisible(feature)) {
+        return [];
+    }
+    if (originalRoadNetworkStyle) {
+        return originalRoadNetworkStyle(feature, resolution);
+    }
+    return [];
+}
+
+if (typeof lyr___2 !== 'undefined' && originalRoadNetworkStyle) {
+    lyr___2.setStyle(filteredRoadNetworkStyle);
+}
+
 //change cursor
+// ラインのクリック領域を5px拡張
+var FEATURE_HIT_TOLERANCE = 5;
 function pointerOnFeature(evt) {
     if (evt.dragging) {
         return;
     }
-    var hasFeature = map.hasFeatureAtPixel(evt.pixel, {
-        layerFilter: function(layer) {
-            return layer && (layer.get("interactive"));
+    var hasFeature = false;
+    map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+        if (!layer || !layer.get("interactive")) {
+            return;
         }
+        if (layer === lyr___2 && !isTravelTimeVisible(feature)) {
+            return;
+        }
+        hasFeature = true;
+        return true;
+    }, {
+        hitTolerance: FEATURE_HIT_TOLERANCE
     });
     map.getViewport().style.cursor = hasFeature ? "pointer" : "";
 }
@@ -180,6 +223,55 @@ function setSelectedLineHighlight(features) {
     }
 }
 
+var TRAVEL_TIME_FIELD = '最寄り到達時間[分]';
+var TRAVEL_TIME_SLIDER_MIN = 2;
+var TRAVEL_TIME_SLIDER_MAX = 60;
+var TRAVEL_TIME_SLIDER_STEP = 2;
+var TRAVEL_TIME_TICK_VALUES = [2, 10, 20, 30, 40, 50, 60];
+var travelTimeMaxMinutes = TRAVEL_TIME_SLIDER_MAX;
+var originalRoadNetworkStyle = typeof style___2 === 'function' ? style___2 : null;
+
+function isTravelTimeVisible(feature) {
+    if (!feature) {
+        return false;
+    }
+    var value = feature.get(TRAVEL_TIME_FIELD);
+    if (value == null || value === '') {
+        return true;
+    }
+    return Number(value) <= travelTimeMaxMinutes;
+}
+
+function filteredRoadNetworkStyle(feature, resolution) {
+    if (!isTravelTimeVisible(feature)) {
+        return [];
+    }
+    if (originalRoadNetworkStyle) {
+        return originalRoadNetworkStyle(feature, resolution);
+    }
+    return [];
+}
+
+if (typeof lyr___2 !== 'undefined' && originalRoadNetworkStyle) {
+    lyr___2.setStyle(filteredRoadNetworkStyle);
+}
+
+function applyTravelTimeFilter(maxMinutes) {
+    travelTimeMaxMinutes = maxMinutes;
+    if (typeof lyr___2 !== 'undefined') {
+        lyr___2.changed();
+    }
+    var overlaySource = featureOverlay.getSource();
+    var hiddenSelected = overlaySource.getFeatures().some(function(feature) {
+        return !isTravelTimeVisible(feature);
+    });
+    if (hiddenSelected) {
+        clearSelectedLineHighlight();
+        popupContent = '';
+        updatePopup();
+    }
+}
+
 var doHighlight = false;
 var doHover = false;
 
@@ -255,6 +347,8 @@ function onPointerMove(evt) {
         if (layer && feature instanceof ol.Feature && (layer.get("interactive") || layer.get("interactive") === undefined)) {
             featuresAndLayers.push({ feature, layer });
         }
+    }, {
+        hitTolerance: FEATURE_HIT_TOLERANCE
     });
 
     // Iterate over the features and layers in reverse order
@@ -407,6 +501,9 @@ function onSingleClickFeatures(evt) {
         if (layer === featureOverlay) {
             return;
         }
+        if (layer === lyr___2 && !isTravelTimeVisible(feature)) {
+            return;
+        }
         if (layer && feature instanceof ol.Feature && (layer.get("interactive") || layer.get("interactive") === undefined)) {
             var doPopup = false;
             for (var k in layer.get('fieldImages')) {
@@ -439,6 +536,8 @@ function onSingleClickFeatures(evt) {
                 }
             }
         }
+    }, {
+        hitTolerance: FEATURE_HIT_TOLERANCE
     });
     if (popupText === '<ul>') {
         popupText = '';
@@ -638,6 +737,114 @@ document.addEventListener('DOMContentLoaded', function() {
     if (zoomControl) {
         topLeftContainerDiv.appendChild(zoomControl);
     }
+
+    var helpControlElement = document.createElement('div');
+    helpControlElement.id = 'help-control';
+    helpControlElement.className = 'ol-unselectable ol-control';
+    var helpButton = document.createElement('button');
+    helpButton.type = 'button';
+    helpButton.title = 'この地図について';
+    helpButton.setAttribute('aria-label', 'この地図について');
+    helpButton.innerHTML = '<i class="fas fa-question" aria-hidden="true"></i>';
+    helpControlElement.appendChild(helpButton);
+    map.addControl(new ol.control.Control({
+        element: helpControlElement
+    }));
+    topLeftContainerDiv.appendChild(helpControlElement);
+
+    var aboutModal = document.getElementById('about-modal');
+    function openAboutModal() {
+        aboutModal.hidden = false;
+        helpButton.setAttribute('aria-expanded', 'true');
+    }
+    function closeAboutModal() {
+        aboutModal.hidden = true;
+        helpButton.setAttribute('aria-expanded', 'false');
+        helpButton.focus();
+    }
+    helpButton.setAttribute('aria-expanded', 'false');
+    helpButton.setAttribute('aria-controls', 'about-modal');
+    helpButton.addEventListener('click', function(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        if (aboutModal.hidden) {
+            openAboutModal();
+        } else {
+            closeAboutModal();
+        }
+    });
+    aboutModal.addEventListener('click', function(evt) {
+        if (evt.target === aboutModal) {
+            closeAboutModal();
+        }
+    });
+    document.addEventListener('keydown', function(evt) {
+        if (evt.key === 'Escape' && !aboutModal.hidden) {
+            closeAboutModal();
+        }
+    });
+
+    // travel time slider
+    (function setupTravelTimeFilter() {
+        var filterElement = document.getElementById('travel-time-filter');
+        var rangeInput = document.getElementById('travel-time-range');
+        var fillElement = document.getElementById('travel-time-track-fill');
+        var ticksElement = document.getElementById('travel-time-ticks');
+        var labelsElement = document.getElementById('travel-time-labels');
+        if (!filterElement || !rangeInput || !fillElement || !ticksElement || !labelsElement) {
+            return;
+        }
+
+        map.addControl(new ol.control.Control({
+            element: filterElement
+        }));
+
+        function sliderPercent(value) {
+            return ((Number(value) - TRAVEL_TIME_SLIDER_MIN) / (TRAVEL_TIME_SLIDER_MAX - TRAVEL_TIME_SLIDER_MIN)) * 100;
+        }
+
+        TRAVEL_TIME_TICK_VALUES.forEach(function(tickValue) {
+            var percent = sliderPercent(tickValue);
+            var tick = document.createElement('span');
+            tick.className = 'travel-time-tick';
+            tick.style.left = percent + '%';
+            ticksElement.appendChild(tick);
+
+            var label = document.createElement('span');
+            label.className = 'travel-time-label';
+            label.style.left = percent + '%';
+            label.textContent = String(tickValue);
+            labelsElement.appendChild(label);
+        });
+
+        function applyTravelTimeFilter(maxMinutes) {
+            travelTimeMaxMinutes = maxMinutes;
+            fillElement.style.width = sliderPercent(maxMinutes) + '%';
+            rangeInput.setAttribute('aria-valuenow', String(maxMinutes));
+            rangeInput.setAttribute('aria-valuetext', maxMinutes + '分以下');
+            if (typeof lyr___2 !== 'undefined') {
+                lyr___2.changed();
+            }
+            var overlaySource = featureOverlay.getSource();
+            var shouldClear = overlaySource.getFeatures().some(function(feature) {
+                return !isTravelTimeVisible(feature);
+            });
+            if (shouldClear) {
+                clearSelectedLineHighlight();
+                popupContent = '';
+                updatePopup();
+            }
+        }
+
+        rangeInput.addEventListener('input', function() {
+            applyTravelTimeFilter(Number(rangeInput.value));
+        });
+        rangeInput.addEventListener('change', function() {
+            applyTravelTimeFilter(Number(rangeInput.value));
+        });
+        applyTravelTimeFilter(Number(rangeInput.value));
+    })();
+
     //geolocate
     if (typeof geolocateControl !== 'undefined') {
         topLeftContainerDiv.appendChild(geolocateControl);
